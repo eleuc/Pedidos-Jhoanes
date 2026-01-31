@@ -3,34 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pastelería Chef Jhoan</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Jhoanes Bakery - Pedidos</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header-bakery { background: #3d2b1f; color: white; padding: 2rem 0; text-align: center; margin-bottom: 2rem; }
+        .category-title { border-left: 5px solid #d4a373; padding-left: 15px; margin: 2rem 0 1rem; color: #3d2b1f; }
+        .product-card { border: none; transition: transform 0.2s; border-radius: 15px; overflow: hidden; height: 100%; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .btn-add { background-color: #d4a373; border: none; color: white; }
+        .btn-add:hover { background-color: #bc8a5f; }
+        .cart-float { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+        .badge-cart { font-size: 0.8rem; }
+    </style>
 </head>
-<body class="bg-pink-50 text-gray-800">
-    <nav class="p-6 bg-white shadow-md flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-pink-600">Chef Jhoan 🍰</h1>
-        <div class="space-x-4">
-            <a href="#" class="hover:text-pink-500 font-medium">Catálogo</a>
-            <a href="https://wa.me/tu-numero-aqui" class="bg-pink-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-pink-600 transition">Hacer Pedido</a>
-        </div>
-    </nav>
+<body>
 
-    <header class="text-center py-20 bg-white mb-10">
-        <h2 class="text-5xl font-extrabold mb-4 text-gray-900">El arte hecho pastel</h2>
-        <p class="text-xl text-gray-600">Diseños exclusivos y sabores inolvidables en Soacha.</p>
-    </header>
+<div class="header-bakery">
+    <h1>🥐 Jhoanes Bakery & Coffee</h1>
+    <p>Pastelería Artesanal de Autor</p>
+</div>
 
-    <section class="max-w-4xl mx-auto px-4 pb-20">
-        <div class="bg-white p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row items-center gap-8 border-t-8 border-pink-400">
-            <div class="w-full md:w-1/2 h-64 bg-pink-100 rounded-2xl flex items-center justify-center">
-                <span class="text-pink-300 font-bold text-lg">Próximamente fotos reales</span>
+<div class="container mb-5">
+    <div id="menu-container"></div>
+</div>
+
+<div class="cart-float">
+    <button class="btn btn-dark btn-lg rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#cartModal">
+        🛒 Ver Carrito <span id="cart-count" class="badge bg-danger rounded-pill">0</span>
+    </button>
+</div>
+
+<div class="modal fade" id="cartModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tu Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="w-full md:w-1/2">
-                <h3 class="text-3xl font-bold mb-2">Pasteles de Celebración</h3>
-                <p class="text-gray-600 mb-6">Personalizamos cada detalle para que tu evento sea único. Calidad artesanal con el toque del Chef Jhoan.</p>
-                <p class="text-pink-600 text-2xl font-black">¡Cotiza tu diseño!</p>
+            <div class="modal-body">
+                <ul id="cart-items" class="list-group list-group-flush mb-3"></ul>
+                <div class="d-flex justify-content-between fw-bold border-top pt-2">
+                    <span>Total:</span>
+                    <span id="cart-total">$0.00</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Seguir Comprando</button>
+                <button type="button" class="btn btn-success" onclick="enviarPedido()">Confirmar Pedido</button>
             </div>
         </div>
-    </section>
+    </div>
+</div>
+
+<script>
+    // Datos del PDF del Chef Jhoan
+    const categorias = [
+        {
+            nombre: "Croissants & Viennoiserie",
+            productos: [
+                { id: 1, nombre: "Artisanal Croissant", precio: 2.50, desc: "Clásico amanteigado y folhado.", icon: "🥐" },
+                { id: 2, nombre: "Almond Croissant", precio: 3.50, desc: "Creme de amêndoas e lascas crocantes.", icon: "🥐" },
+                { id: 4, nombre: "Nutella New York Roll", precio: 4.50, desc: "Roll circular recheado com Nutella.", icon: "🌀" },
+                { id: 5, nombre: "Fruit Danish", precio: 7.95, desc: "Massa folhada com frutas frescas.", icon: "🍓" }
+            ]
+        },
+        {
+            nombre: "Entremets (Sobremesas de Autor)",
+            productos: [
+                { id: 10, nombre: "Emerald Temptation", precio: 6.50, desc: "Mousse de pistacho e frutos vermelhos.", icon: "🟢" },
+                { id: 11, nombre: "Pear Harmony", precio: 6.50, desc: "Mousse de chocolate branco e pêra.", icon: "🍐" },
+                { id: 13, nombre: "Mango Coco Dream", precio: 7.00, desc: "Exótico de manga e coco.", icon: "🥭" }
+            ]
+        }
+    ];
+
+    let carrito = [];
+
+    // Renderizar el Menú
+    function renderMenu() {
+        const container = document.getElementById('menu-container');
+        categorias.forEach(cat => {
+            let html = `<h3 class="category-title">${cat.nombre}</h3><div class="row">`;
+            cat.productos.forEach(p => {
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card product-card shadow-sm p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span style="font-size: 2rem">${p.icon}</span>
+                                <span class="fw-bold text-success">$${p.precio.toFixed(2)}</span>
+                            </div>
+                            <h5 class="mt-2">${p.nombre}</h5>
+                            <p class="text-muted small">${p.desc}</p>
+                            <button class="btn btn-add w-100" onclick="addToCart(${p.id}, '${p.nombre}', ${p.precio})">
+                                + Agregar al carrito
+                            </button>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function addToCart(id, nombre, precio) {
+        carrito.push({id, nombre, precio});
+        actualizarCarritoUI();
+    }
+
+    function actualizarCarritoUI() {
+        document.getElementById('cart-count').innerText = carrito.length;
+        const list = document.getElementById('cart-items');
+        list.innerHTML = "";
+        let total = 0;
+        carrito.forEach((item, index) => {
+            total += item.precio;
+            list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                ${item.nombre} <span>$${item.precio.toFixed(2)}</span>
+            </li>`;
+        });
+        document.getElementById('cart-total').innerText = `$${total.toFixed(2)}`;
+    }
+
+    function enviarPedido() {
+        if(carrito.length === 0) return alert("El carrito está vacío");
+        
+        // Aquí iría la lógica de Firebase que ya configuramos antes
+        console.log("Pedido enviado:", carrito);
+        alert("¡Pedido enviado al Chef Jhoan!");
+        carrito = [];
+        actualizarCarritoUI();
+        bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide();
+    }
+
+    renderMenu();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
