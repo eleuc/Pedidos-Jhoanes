@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "pedidos-jhoanes",
     "public": "public",
     "ignore": [
       "firebase.json",

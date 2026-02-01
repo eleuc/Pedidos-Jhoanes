@@ -2,56 +2,131 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel de Cocina - Chef Jhoan</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel del Chef - Jhoanes Bakery</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        :root { --dark-bg: #1a1a1a; --card-bg: #2d2d2d; --accent: #d4a373; }
+        body { background-color: var(--dark-bg); color: #e0e0e0; font-family: 'Segoe UI', sans-serif; }
+        .navbar-chef { background-color: #000; border-bottom: 2px solid var(--accent); padding: 1rem; }
+        .pedido-card { 
+            background-color: var(--card-bg); 
+            border: none; 
+            border-left: 8px solid var(--accent); 
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            margin-bottom: 1.5rem;
+        }
+        .pedido-listo { border-left-color: #28a745; opacity: 0.6; }
+        .item-nombre { font-size: 1.1rem; font-weight: 500; color: #fff; }
+        .badge-total { background-color: var(--accent); color: #000; font-size: 1rem; }
+        .btn-check { background-color: #28a745; color: white; border: none; }
+        .btn-delete { color: #ff4d4d; border: 1px solid #ff4d4d; background: transparent; }
+        .btn-delete:hover { background: #ff4d4d; color: white; }
+    </style>
 </head>
-<body class="bg-stone-900 text-white p-6">
-    <h1 class="text-3xl font-bold mb-6 text-orange-400 border-b border-orange-900 pb-4">👨‍🍳 Pedidos Entrantes</h1>
-    
-    <div id="lista-pedidos" class="grid gap-4">
+<body>
+
+<nav class="navbar-chef mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <h2 class="m-0 text-white">👨‍🍳 Comandas Real-Time</h2>
+        <span id="connection-status" class="badge bg-success">Conectado a Firestore</span>
+    </div>
+</nav>
+
+<div class="container">
+    <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+    <div id="lista-pedidos" class="row">
+        <div class="text-center mt-5">
+            <div class="spinner-border text-warning" role="status"></div>
+            <p class="mt-2">Sincronizando con la cocina...</p>
         </div>
+    </div>
+</div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // !!! USA TUS MISMAS CREDENCIALES AQUÍ !!!
-        const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "pedidos-jhoanes.firebaseapp.com",
-            projectId: "pedidos-jhoanes",
-            storageBucket: "pedidos-jhoanes.appspot.com",
-            messagingSenderId: "TU_ID",
-            appId: "TU_APP_ID"
-        };
+    // --- REEMPLAZA CON TUS DATOS DE FIREBASE ---
+    const firebaseConfig = {  apiKey: "AIzaSyB717Vc2v56WZkx9nNzHUuHRTQgQb8S-wk",
+  authDomain: "pedidos-jhoanes.firebaseapp.com",
+  projectId: "pedidos-jhoanes",
+  storageBucket: "pedidos-jhoanes.firebasestorage.app",
+  messagingSenderId: "1027681257600",
+  appId: "1:1027681257600:web:e0854891a0da511fbe3e65",
+  measurementId: "G-FSR8Z2XDY3"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const sound = document.getElementById('notif-sound');
+    let isInitialLoad = true;
 
-        // Escuchar cambios en TIEMPO REAL
-        const q = query(collection(db, "pedidos"), orderBy("fecha", "desc"));
+    // Escuchar cambios en la colección "pedidos"
+    const q = query(collection(db, "pedidos"), orderBy("fecha", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+        const contenedor = document.getElementById('lista-pedidos');
         
-        onSnapshot(q, (snapshot) => {
-            const contenedor = document.getElementById('lista-pedidos');
-            contenedor.innerHTML = ""; // Limpiar antes de actualizar
-
-            snapshot.forEach((doc) => {
-                const pedido = doc.data();
-                const div = document.createElement('div');
-                div.className = "bg-stone-800 p-4 rounded-xl border-l-8 border-orange-500 shadow-lg";
-                div.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-orange-300 text-sm">${pedido.fecha}</p>
-                            <h2 class="text-xl font-bold">${pedido.producto}</h2>
-                            <p class="text-stone-400">Cliente: <span class="text-white">${pedido.cliente}</span></p>
-                        </div>
-                        <span class="bg-orange-900 text-orange-200 px-3 py-1 rounded-full text-xs font-bold">NUEVO</span>
-                    </div>
-                `;
-                contenedor.appendChild(div);
+        // Sonido solo para pedidos nuevos después de la carga inicial
+        if (!isInitialLoad) {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === "added") sound.play().catch(() => console.log("Clic en pantalla para activar audio"));
             });
+        }
+        isInitialLoad = false;
+
+        if (snapshot.empty) {
+            contenedor.innerHTML = '<div class="col-12 text-center mt-5"><h3 class="text-muted">No hay pedidos hoy</h3></div>';
+            return;
+        }
+
+        contenedor.innerHTML = "";
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const id = docSnap.id;
+            const hora = data.fecha?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || "Ahora";
+
+            const card = document.createElement('div');
+            card.className = "col-md-6 col-lg-4";
+            card.innerHTML = `
+                <div class="card pedido-card p-3 ${data.estado === 'Listo' ? 'pedido-listo' : ''}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h4 class="m-0">${data.cliente}</h4>
+                            <small class="text-muted">🕒 ${hora}</small>
+                        </div>
+                        <span class="badge badge-total">$${data.total.toFixed(2)}</span>
+                    </div>
+                    <hr class="border-secondary">
+                    <ul class="list-unstyled">
+                        ${data.items.map(item => `<li class="mb-2">🔹 <span class="item-nombre">${item.nombre}</span></li>`).join('')}
+                    </ul>
+                    <div class="d-flex justify-content-between mt-3">
+                        <button class="btn btn-delete btn-sm" onclick="borrarPedido('${id}')">Eliminar</button>
+                        ${data.estado !== 'Listo' ? 
+                            `<button class="btn btn-check fw-bold" onclick="completarPedido('${id}')">MARCAR LISTO</button>` : 
+                            `<span class="text-success fw-bold">✓ DESPACHADO</span>`
+                        }
+                    </div>
+                </div>
+            `;
+            contenedor.appendChild(card);
         });
-    </script>
+    });
+
+    // Funciones globales para los botones
+    window.completarPedido = async (id) => {
+        await updateDoc(doc(db, "pedidos", id), { estado: "Listo" });
+    };
+
+    window.borrarPedido = async (id) => {
+        if(confirm("¿Eliminar comanda permanentemente?")) await deleteDoc(doc(db, "pedidos", id));
+    };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
